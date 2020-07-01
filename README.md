@@ -1,6 +1,6 @@
 Group Project - Distributed Content Searching
 Due Date - Jul 10 2020.
-<br>
+
 ##### How to run java bootstrap server
 
 1. Go to src/BootstrapServer/java
@@ -13,7 +13,6 @@ Due Date - Jul 10 2020.
 2. Update pythonNode.py with correct IP and port of the bootstrap server running
 3. python3 pythonNode.py
 
+##### Design doc link
 <br>
-**Design doc**
-
-https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit
+[https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
