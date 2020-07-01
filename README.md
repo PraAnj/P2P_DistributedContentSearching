@@ -15,4 +15,4 @@ Due Date - Jul 10 2020.
 
 ##### Design doc link
 <br>
-[https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
+<br>
