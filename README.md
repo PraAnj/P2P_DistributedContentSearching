@@ -14,9 +14,9 @@ Due Date - Jul 10 2020.
 > "python pythonNode.py "     
 > ex: python server.py 192.168.1.102 8081 i1     
 
-##### [Design doc link](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
-<br>
-<br>
+##### [Design doc link](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)     
+
+
 | Item (with error handling) | Status | Assignee |    
 | -------------------------- | ------ | -------- |    
 | REG to BS | Done | Imalka |    
@@ -38,7 +38,5 @@ Due Date - Jul 10 2020.
 | File downloader thread | Phase 3 |  |    
 | File downloader REST API | Phase 3 |  |    
 | Performance matric | Phase 4 |  |    
-<br>
-<br>
-<br>
-<br>
+
+
