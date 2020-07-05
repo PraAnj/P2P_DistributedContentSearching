@@ -1,6 +1,3 @@
-Group Project - Distributed Content Searching
-Due Date - Jul 10 2020.
-
 ##### How to run java bootstrap server
 
 1. Go to src/BootstrapServer/java
