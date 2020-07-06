@@ -48,7 +48,7 @@ port = sys.argv[2]
 name = sys.argv[3]
 
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-server.connect(('192.168.1.102', 55555))
+server.connect((ip, 55555))
 server.send(("0033 REG " + ip + " " + port + " " +  name).encode('utf-8'))
 
 from_server = server.recvfrom(2048)
@@ -56,7 +56,7 @@ serverResponse = (from_server[0]).decode('utf-8').split()
 server.close()
 
 numberOfBooks = random.randrange(3,6)
-fileNames = open("File Names.txt", "r").read().split('\n')
+fileNames = open("../File Names.txt", "r").read().split('\n')
 
 for x in range(numberOfBooks):
     myFiles.append(fileNames[random.randrange(0,len(fileNames))])
