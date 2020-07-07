@@ -9,9 +9,9 @@
 1. Go to src
 2. Run the python script as below.
 
-> "cd src "    
-> "python pythonNode.py "     
-> ex: python server.py localhost 55555 i1      
+> "cd src "
+> "python pythonNode.py <ip\_bs> <port\_bs> <ip\_self> <port\_self> <name\_self>"
+> ex: python pythonNode.py 192.168.1.2 55555 127.0.0.1 8081 node1
 
 ##### [Design doc link](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
 
