@@ -130,8 +130,13 @@ register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
 init_random_file_list()
 
 # Open UDP server to listen to peers
-init_udp_server_thread(ip_self, port_self)
+# Event loop for peer connections runs on a different thread
+peerEventLoop = threading.Thread(target=init_udp_server_thread, args=(ip_self, port_self,))
+peerEventLoop.start()
+# init_udp_server_thread(ip_self, port_self)
 
+query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
+print('Program read input : '+ query)
 
 # [TODO]Open REST Api to handle download requests
 
