@@ -1,6 +1,7 @@
 import socket, threading
 import sys
 import random
+import re
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -98,6 +99,52 @@ def register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
 
     acknowledge_2_peers(ip_self, port_self, serverResponse)
 
+# Deregistration with BS and notify peers
+def leaveNetwork(ip_bs, port_bs, ip_self, port_self, name_self):
+    print ('Leaving the network.')
+    # TODO: deregister with BS and peers
+
+def getMatchingFileLocal(query):
+    # regex=re.compile(r"\b"+query+"\b")
+    for file in myFiles:
+        # print ("searching " + file)
+        # match = regex.findall(file)
+        match = file.startswith(query)
+        if match:
+            return file
+    return ""
+
+def prefixLengthToRequest(request):
+    length = len(request) + 5
+    lengthPrefix = f'{length:04}'
+    print (lengthPrefix + ' ' + request)
+    return lengthPrefix + ' ' + request
+
+def sendSearchRequestToPeer(ip_self, port_self, peer, query):
+    ip_peer = peer[0]
+    port_peer = peer[1]
+    print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.connect((ip_peer, int(port_peer)))
+    request = "SER " + ip_self + " " + str(port_self) + " " +  query
+    server.send((prefixLengthToRequest(request)).encode('utf-8'))
+
+def searchFile(ip_self, port_self, query):
+    print ('Searching file :' + query)
+    # Find in local files
+    file = getMatchingFileLocal(query)
+    if file:
+        print ('Found file local : ' + file)
+        return file
+    # Update global request ID
+    # Send search request to peers
+    # peer response will receive in PeerThread event loop?
+    if not myConnectedNodes:
+        return False
+    for peer in myConnectedNodes:
+        sendSearchRequestToPeer(ip_self, port_self, peer, query)
+    return True
+
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     nodeSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -129,14 +176,18 @@ register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
 
 init_random_file_list()
 
-# Open UDP server to listen to peers
-# Event loop for peer connections runs on a different thread
+# Event loop for peer connections (UDP server) runs on a different thread
 peerEventLoop = threading.Thread(target=init_udp_server_thread, args=(ip_self, port_self,))
 peerEventLoop.start()
 # init_udp_server_thread(ip_self, port_self)
 
-query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
-print('Program read input : '+ query)
+while True:
+    query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
+    if query == 'X':
+        leaveNetwork(ip_bs, port_bs, ip_self, port_self, name_self)
+        exit()
+    else:
+        searchFile(ip_self, port_self, query)
 
 # [TODO]Open REST Api to handle download requests
 
