@@ -115,9 +115,12 @@ ip_bs = sys.argv[1]
 port_bs = int(sys.argv[2])
 
 # Self details
-ip_self = sys.argv[3] # can this be picked programatically
+ip_self = sys.argv[3] # IP as a program input
 port_self = int(sys.argv[4])
 name_self = sys.argv[5]
+
+# ip_self = socket.gethostbyname(socket.gethostname())
+# print ('Host IP is: ' + ip_self)
 
 # [TODO] Input validation, print usage if wrong
 
@@ -128,6 +131,7 @@ init_random_file_list()
 
 # Open UDP server to listen to peers
 init_udp_server_thread(ip_self, port_self)
+
 
 # [TODO]Open REST Api to handle download requests
 
