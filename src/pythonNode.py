@@ -71,12 +71,12 @@ class PeerThread(threading.Thread):
                 print ('Search received again from a loop')
             else:
                 query = res[4]
-                found, local, file = searchFile(res[2], int(res[3]), query, False)
+                found, local, files = searchFile(res[2], int(res[3]), query, False)
                 if found: # reply to the peer
                     if local:
-                        return prefixLengthToRequest('SEROK 1 ' + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + file)
+                        return prefixLengthToRequest('SEROK 1 ' + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + files )
                     else: #Peer
-                        return file
+                        return files
                 else:
                     return '0010 ERROR'
         # Request Type cannot be identified
@@ -317,7 +317,12 @@ def searchFile(ip_self, port_self, query, ownRequest):
     # Find in local files
     file = get_matching_file_local(query)
     if file:
-        return (True, True, file)
+        result= ''
+        for element in file:
+            element = "\""+element+"\""
+            result += str(element)
+            result += ' '
+        return (True, True, result.strip())
     if not myConnectedNodes:
         return (False, False, "")
 
@@ -364,7 +369,6 @@ def init_udp_server_thread(host='127.0.0.1', port=1234):
         data, peerAddress = nodeSocket.recvfrom(2048)    
         newThread = PeerThread(nodeSocket, peerAddress, data)
         newThread.start()
-
 
 def get_user_arguements(isRetry = False):
     global ip_bs
