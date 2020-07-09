@@ -7,6 +7,8 @@ myConnectedNodes = []
 mySearchRequests = []
 otherSearchRequests = []
 myFiles = []
+ip_self = ''
+port_self = 0
 
 registrationSuccessCodes = ['0', '1', '2']
 registrationErrorCodes = {
@@ -28,6 +30,8 @@ class PeerThread(threading.Thread):
         global myConnectedNodes
         global mySearchRequests
         global otherSearchRequests
+        global ip_self
+        global port_self
 
         res = requestString.split()
         reqType = res[1]
@@ -58,6 +62,23 @@ class PeerThread(threading.Thread):
                 print("Declining the leave request due to an error")
                 return '0013 LEAVEOK 9999'
 
+        elif reqType == 'SER':
+            print ('Search requet received : ' + requestString)
+
+            if requestString in mySearchRequests:
+                print ('Search received to the originator again')
+            elif requestString in otherSearchRequests:
+                print ('Search received again from a loop')
+            else:
+                query = res[4]
+                found, local, file = searchFile(res[2], int(res[3]), query, False)
+                if found: # reply to the peer
+                    if local:
+                        return prefixLengthToRequest('SEROK 1 ' + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + file)
+                    else: #Peer
+                        return file
+                else:
+                    return '0010 ERROR'
         # Request Type cannot be identified
         return "Unrecognised request type"
         
@@ -67,14 +88,12 @@ class PeerThread(threading.Thread):
         global otherSearchRequests        
 
         # print ("Connection from : ", self.peerAddress)
-
         msg = self.data.decode()        
         print("Message From Peer: ", msg)
         response = self.processRequest(msg)
 
         self.nodeSocket.sendto(bytes(response, 'UTF-8'), self.peerAddress)
         # print ("Peer at ", self.peerAddress , " disconnected...")
-
 
 # Randomly pick files for the node
 def init_random_file_list():
@@ -293,31 +312,46 @@ def prefixLengthToRequest(request):
     print (lengthPrefix + ' ' + request)
     return lengthPrefix + ' ' + request
 
-def sendSearchRequestToPeer(ip_self, port_self, peer, query):
-    ip_peer = peer[0]
-    port_peer = peer[1]
-    print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.connect((ip_peer, int(port_peer)))
-    request = "SER " + ip_self + " " + str(port_self) + " " +  query
-    server.send((prefixLengthToRequest(request)).encode('utf-8'))
-
-
-def searchFile(ip_self, port_self, query):
-    print('Searching file :' + query)
+def searchFile(ip_self, port_self, query, ownRequest):
+    print ('Searching file :' + query)
     # Find in local files
     file = get_matching_file_local(query)
     if file:
-        print('Found files local : ', file)
-        return file
-    # Update global request ID
-    # Send search request to peers
-    # peer response will receive in PeerThread event loop?
+        return (True, True, file)
     if not myConnectedNodes:
-        return False
+        return (False, False, "")
+
+    request = "SER " + ip_self + " " + str(port_self) + " " +  query
+    request = prefixLengthToRequest(request)
+
+    # Update global request cache
+    if ownRequest:
+        mySearchRequests.append(request)
+    else:
+        otherSearchRequests.append(request)
+    # Send search request to peers
+    # peer response will receive in PeerThread event loop
     for peer in myConnectedNodes:
-        sendSearchRequestToPeer(ip_self, port_self, peer, query)
-    return True
+        ip_peer = peer[0]
+        port_peer = peer[1]
+
+        print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
+        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server.connect((ip_peer, int(port_peer)))
+        server.send((request).encode('utf-8'))
+
+        from_server = server.recvfrom(2048)
+        serverResponse = (from_server[0]).decode('utf-8').split()
+        server.close()
+        print(serverResponse)
+
+        if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
+            if ownRequest:
+                return True, False, serverResponse[6] # handle multiple files here
+            else:
+                return True, False, serverResponse
+
+    return (False, False, "")
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -397,7 +431,11 @@ if register_with_bs(ip_self, port_self, name_self) :
                         print("Error Occurred while leaving the BS and peers. Tried twice hence exiting")
                         exit()
         else:
-            searchFile(ip_self, port_self, query)
+            found, local, file = searchFile(ip_self, port_self, query, True)
+            if found:
+                print ('Found file : ' + file)
+            else:
+                print ('File not found.')
 
 # [TODO]Open REST Api to handle download requests
 
