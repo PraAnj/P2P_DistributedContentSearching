@@ -130,9 +130,10 @@ def register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
 
     acknowledge_2_peers(ip_self, port_self, serverResponse)
 
-# Un-registration with BS and acknowledge peers
+# Deregistration with BS and notify peers
 def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
-    # Send registration to BS
+    print ('Leaving the network.')
+    # Send de-registration to BS
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.connect((ip_bs, port_bs))
     server.send(("0033 UNREG " + ip_self + " " + str(port_self) + " " + name_self).encode('utf-8'))
@@ -147,11 +148,6 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
         return "true"
     else:
         return "false"
-
-# Deregistration with BS and notify peers
-def leaveNetwork(ip_bs, port_bs, ip_self, port_self, name_self):
-    print ('Leaving the network.')
-    # TODO: deregister with BS and peers
 
 def getMatchingFileLocal(query):
     # regex=re.compile(r"\b"+query+"\b")
@@ -222,8 +218,8 @@ name_self = sys.argv[5]
 
 # Join peers happen inside this
 register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-result = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-print(result)
+# result = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+# print(result)
 
 init_random_file_list()
 
@@ -235,7 +231,7 @@ peerEventLoop.start()
 while True:
     query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
     if query == 'X':
-        leaveNetwork(ip_bs, port_bs, ip_self, port_self, name_self)
+        unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
         exit()
     else:
         searchFile(ip_self, port_self, query)
