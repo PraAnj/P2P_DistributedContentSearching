@@ -201,7 +201,8 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
     global port_self
     global name_self
     
-    # unregister with ip, port
+    # unregister first
+    unregister_with_bs(ip_bs, port_bs, ip, port, name)
 
     if isReg :
         print('Given ip and port is already used by another node. Please try a different ip and port')
@@ -212,13 +213,7 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
         print('Getting 2 new random nodes ')
         isSuccess = register_with_bs(ip, port, name)
 
-    if isSuccess :
-        #ip_self = ip_self_new
-        #port_self = port_self_new
-        #name_self = name_self_new
-        return True
-    else :
-        return False
+    return isSuccess
 
 # Deregistration with BS and notify peers
 def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
@@ -339,13 +334,13 @@ if register_with_bs(ip_self, port_self, name_self) :
     peerEventLoop.start()
     # init_udp_server_thread(ip_self, port_self)
 
-while True:
-    query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
-    if query == 'X':
-        unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-        exit()
-    else:
-        searchFile(ip_self, port_self, query)
+    while True:
+        query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
+        if query == 'X':
+            unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+            exit()
+        else:
+            searchFile(ip_self, port_self, query)
 
 # [TODO]Open REST Api to handle download requests
 
