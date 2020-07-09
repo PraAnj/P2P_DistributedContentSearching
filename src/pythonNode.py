@@ -277,7 +277,7 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
         return False
 
 
-# Check whether file ia available locally in file list
+# Check whether file is available locally in file list
 def get_matching_file_local(query):
     matched_file_list = []
     for file in myFiles:
