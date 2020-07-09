@@ -84,6 +84,37 @@ def acknowledge_2_peers(ip, port, serverResponse):
         print ("From Peer: ", (from_peer[0]).decode('utf-8'))
         peer.close()
 
+
+# LEAVE from 2 peers obtained from BS
+def leave_2_peers(ip, port, serverResponse):
+    if (len(serverResponse) > 5):
+        print("Peer1: ", serverResponse[3], int(serverResponse[4]))
+        peer1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        peer1.connect((serverResponse[3], int(serverResponse[4])))
+        peer1.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+
+        from_peer1 = peer1.recvfrom(2048)
+        print("From Peer1: ", (from_peer1[0]).decode('utf-8'))
+        peer1.close()
+
+        print("Peer2: ", serverResponse[5], int(serverResponse[6]))
+        peer2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        peer2.connect((serverResponse[5], int(serverResponse[6])))
+        peer2.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+
+        from_peer2 = peer2.recvfrom(2048)
+        print("From Peer2: ", (from_peer2[0]).decode('utf-8'))
+        peer2.close()
+    elif (len(serverResponse) > 3):
+        print("Peer: ", serverResponse[3], int(serverResponse[4]))
+        peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        peer.connect((serverResponse[3], int(serverResponse[4])))
+        peer.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+
+        from_peer = peer.recvfrom(2048)
+        print("From Peer: ", (from_peer[0]).decode('utf-8'))
+        peer.close()
+
 # Registration with BS and acknowledge peers
 def register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
     # Send registration to BS
@@ -97,6 +128,24 @@ def register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
     server.close()
 
     acknowledge_2_peers(ip_self, port_self, serverResponse)
+
+# Un-registration with BS and acknowledge peers
+def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
+    # Send registration to BS
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.connect((ip_bs, port_bs))
+    server.send(("0033 UNREG " + ip_self + " " + str(port_self) + " " + name_self).encode('utf-8'))
+
+    # Receive response from BS for registration
+    from_server = server.recvfrom(2048)
+    serverResponse = (from_server[0]).decode('utf-8').split()
+    server.close()
+    print(serverResponse)
+
+    if serverResponse[1] == 'UNROK' and serverResponse[2] == '0':
+        return "true"
+    else:
+        return "false"
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -123,6 +172,8 @@ name_self = sys.argv[5]
 
 # Join peers happen inside this
 register_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+result = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+print(result)
 
 init_random_file_list()
 
