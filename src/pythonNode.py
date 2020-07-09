@@ -1,7 +1,7 @@
-import socket, threading
-import sys
 import random
-import re
+import socket
+import sys
+import threading
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -39,10 +39,27 @@ class PeerThread(threading.Thread):
             else :
                 print("New node joined")
                 myConnectedNodes.append((res[2], res[3]))
-                print('My connected nodes: ',myConnectedNodes)
+                print('My connected nodes: ', myConnectedNodes)
                 return '0013 JOINOK 0'
-        #handle other request types
-        return "Hi"
+
+        elif reqType == 'LEAVE':
+            if len(myConnectedNodes) == 0:
+                # No peers connected
+                print('No peers connected')
+                return '0013 LEAVEOK 0'
+            elif 0 < len(myConnectedNodes) < 5:
+                # Acceptable no of peers are connected
+                print("A Node Leaved")
+                myConnectedNodes.remove((res[2], res[3]))
+                print('My connected nodes: ', myConnectedNodes)
+                return '0013 LEAVEOK 0'
+            else:
+                # No of peer nodes are not acceptable
+                print("Declining the leave request due to an error")
+                return '0013 LEAVEOK 9999'
+
+        # Request Type cannot be identified
+        return "Unrecognised request type"
         
     def run(self):
         global myConnectedNodes
@@ -52,11 +69,12 @@ class PeerThread(threading.Thread):
         # print ("Connection from : ", self.peerAddress)
 
         msg = self.data.decode()        
-        print ("Message From Peer: ", msg)
+        print("Message From Peer: ", msg)
         response = self.processRequest(msg)
 
-        self.nodeSocket.sendto(bytes(response,'UTF-8'), self.peerAddress)
+        self.nodeSocket.sendto(bytes(response, 'UTF-8'), self.peerAddress)
         # print ("Peer at ", self.peerAddress , " disconnected...")
+
 
 # Randomly pick files for the node
 def init_random_file_list():
@@ -66,12 +84,25 @@ def init_random_file_list():
         myFiles.append(fileNames[random.randrange(0,len(fileNames))])
     print("My Files: ", myFiles)
 
+
 def process_join_response_from_peers(msg):
     response = (msg[0]).decode('utf-8').split()
     if response[2] == '0' :
         return True
     else :
         return False
+
+
+# Process the response for leave from peers
+def process_leave_response_from_peers(msg):
+    response = (msg[0]).decode('utf-8').split()
+    if response[2] == '0':
+        # Leave response is successful
+        return True
+    else:
+        # Leave response is not successful
+        return False
+
 
 # Join with 2 peers obtained from BS
 def acknowledge_2_peers(ip, port, name, serverResponse):
@@ -134,38 +165,40 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
                 myConnectedNodes.append((serverResponse[3], serverResponse[4]))
                 print('My connected nodes: ',myConnectedNodes)
             return isSuccess
-        
 
 
-# LEAVE from 2 peers obtained from BS
-def leave_2_peers(ip, port, serverResponse):
-    if (len(serverResponse) > 5):
-        print("Peer1: ", serverResponse[3], int(serverResponse[4]))
-        peer1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        peer1.connect((serverResponse[3], int(serverResponse[4])))
-        peer1.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+# LEAVE from peers obtained from BS
+def leave_2_peers(ip, port, server_response):
+    global myConnectedNodes
+    print("Server Response for Leave from BS: ", server_response)
 
-        from_peer1 = peer1.recvfrom(2048)
-        print("From Peer1: ", (from_peer1[0]).decode('utf-8'))
-        peer1.close()
+    # Server response should be containing 3 arguments
+    if len(server_response) == 3:
+        # Server response returns acceptable no of arguments
+        # Sending leave requests for all the nodes connected
+        for node_ip, node_port in myConnectedNodes:
+            print("Peer: ", node_ip, node_port)
+            peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            peer.connect((node_ip, int(node_port)))
+            peer.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
 
-        print("Peer2: ", serverResponse[5], int(serverResponse[6]))
-        peer2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        peer2.connect((serverResponse[5], int(serverResponse[6])))
-        peer2.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+            from_peer = peer.recvfrom(2048)
+            print("Response from peer for Leave Request: ", from_peer)
+            peer.close()
 
-        from_peer2 = peer2.recvfrom(2048)
-        print("From Peer2: ", (from_peer2[0]).decode('utf-8'))
-        peer2.close()
-    elif (len(serverResponse) > 3):
-        print("Peer: ", serverResponse[3], int(serverResponse[4]))
-        peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        peer.connect((serverResponse[3], int(serverResponse[4])))
-        peer.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+            if process_leave_response_from_peers(from_peer):
+                # Leave response is in the correct format
+                print('Peer leaved successfully')
+            else:
+                # Leave response is not in the correct format
+                print('Error occurred while leaving the peers')
+                return False
+        return True
+    else:
+        # Server response does not returns acceptable no of arguments
+        print('Format error in the Error Response')
+        return False
 
-        from_peer = peer.recvfrom(2048)
-        print("From Peer: ", (from_peer[0]).decode('utf-8'))
-        peer.close()
 
 # Registration with BS and acknowledge peers
 def register_with_bs(ip, port, name):
@@ -196,6 +229,7 @@ def register_with_bs(ip, port, name):
     else:
         return acknowledge_2_peers(ip_self, port_self, name_self, serverResponse)
 
+
 def handle_errors_in_registration(ip, port, name, isReg = False):
     global ip_self
     global port_self
@@ -215,9 +249,10 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
 
     return isSuccess
 
-# Deregistration with BS and notify peers
+
+# De-registration with BS and notify peers
 def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
-    print ('Leaving the network.')
+    print("Leaving the network.")
     # Send de-registration to BS
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.connect((ip_bs, port_bs))
@@ -225,14 +260,20 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
 
     # Receive response from BS for registration
     from_server = server.recvfrom(2048)
-    serverResponse = (from_server[0]).decode('utf-8').split()
+    server_response = (from_server[0]).decode('utf-8').split()
     server.close()
-    print(serverResponse)
+    print("Server Response for unregistering with BS: ", server_response)
 
-    if serverResponse[1] == 'UNROK' and serverResponse[2] == '0':
-        return "true"
+    if server_response[1] == 'UNROK' and server_response[2] == '0':
+        # Received correct response from the BS
+        print('Successfully received response from the BS')
+        is_leaving_success = leave_2_peers(ip_self, port_self, server_response)
+        return is_leaving_success
     else:
-        return "false"
+        # Received an incorrect response from the BS
+        print('Error in leaving the network. Please try again!')
+        return False
+
 
 def getMatchingFileLocal(query):
     # regex=re.compile(r"\b"+query+"\b")
@@ -287,6 +328,7 @@ def init_udp_server_thread(host='127.0.0.1', port=1234):
         newThread = PeerThread(nodeSocket, peerAddress, data)
         newThread.start()
 
+
 def get_user_arguements(isRetry = False):
     global ip_bs
     global port_bs
@@ -323,9 +365,6 @@ else:
 # ip_self = socket.gethostbyname(socket.gethostname())
 # print ('Host IP is: ' + ip_self)
 
-# [TODO] Input validation, print usage if wrong
-
-
 if register_with_bs(ip_self, port_self, name_self) :
     init_random_file_list()
 
@@ -337,8 +376,23 @@ if register_with_bs(ip_self, port_self, name_self) :
     while True:
         query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
         if query == 'X':
-            unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-            exit()
+            # Executing unregistering process
+            is_unregisterd = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+            if is_unregisterd:
+                print("Leaved the BS and peers successfully")
+                exit()
+            else:
+                print("Error Occurred while leaving the BS and peers. Please try again")
+                # Retrying to leave the network again
+                query = input("1. Press X to try again to leave the network.\n")
+                if query == 'X':
+                    is_unregisterd = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+                    if is_unregisterd:
+                        print("Leaved the BS and peers successfully")
+                        exit()
+                    else:
+                        print("Error Occurred while leaving the BS and peers. Tried twice hence exiting")
+                        exit()
         else:
             searchFile(ip_self, port_self, query)
 
