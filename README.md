@@ -13,6 +13,15 @@
 > "python pythonNode.py <ip\_bs> <port\_bs> <ip\_self> <port\_self> <name\_self>"    
 > ex: python pythonNode.py 192.168.1.2 55555 127.0.0.1 8081 node1     
 
+##### To Exit from the network 
+
+1. Give X as the input to exit the network
+
+> "cd src "    
+> "python pythonNode.py <ip\_bs> <port\_bs> <ip\_self> <port\_self> <name\_self>"    
+> ex: python pythonNode.py 192.168.1.2 55555 127.0.0.1 8081 node1     
+
+
 ##### [Design doc link](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
 
 | Item (with error handling) | Status | Assignee |
@@ -21,10 +30,10 @@
 | REGOK from BS |  | Imalka |
 | JOIN to peers | Done | Imalka |
 | JOINOK from peers |  | Imalka |
-| UNREG to BS |  | Ashirwada |
-| UNROK from BS |  | Ashirwada |
-| LEAVE to peers |  | Ashirwada |
-| LEAVEOK from peers |  | Ashirwada |
+| UNREG to BS | Done | Ashirwada |
+| UNROK from BS | Done | Ashirwada |
+| LEAVE to peers | Done | Ashirwada |
+| LEAVEOK from peers | Done | Ashirwada |
 | SER to peers |  | Prageeth |
 | SEROK from file holder |  | Prageeth |
 | ERROR |  | All |
