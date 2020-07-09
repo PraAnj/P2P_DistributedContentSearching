@@ -81,7 +81,9 @@ def init_random_file_list():
     numberOfBooks = random.randrange(3,6)
     fileNames = open("../File Names.txt", "r").read().split('\n')
     for x in range(numberOfBooks):
-        myFiles.append(fileNames[random.randrange(0,len(fileNames))])
+        book = fileNames[random.randrange(0, len(fileNames))]
+        if book not in myFiles:
+            myFiles.append(book)
     print("My Files: ", myFiles)
 
 
@@ -275,15 +277,15 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
         return False
 
 
-def getMatchingFileLocal(query):
-    # regex=re.compile(r"\b"+query+"\b")
+# Check whether file ia available locally in file list
+def get_matching_file_local(query):
+    matched_file_list = []
     for file in myFiles:
-        # print ("searching " + file)
-        # match = regex.findall(file)
-        match = file.startswith(query)
-        if match:
-            return file
-    return ""
+        if query in file.split():
+            matched_file_list.append(file)
+
+    print("Matched Files List : ", matched_file_list)
+    return matched_file_list
 
 def prefixLengthToRequest(request):
     length = len(request) + 5
@@ -300,12 +302,13 @@ def sendSearchRequestToPeer(ip_self, port_self, peer, query):
     request = "SER " + ip_self + " " + str(port_self) + " " +  query
     server.send((prefixLengthToRequest(request)).encode('utf-8'))
 
+
 def searchFile(ip_self, port_self, query):
-    print ('Searching file :' + query)
+    print('Searching file :' + query)
     # Find in local files
-    file = getMatchingFileLocal(query)
+    file = get_matching_file_local(query)
     if file:
-        print ('Found file local : ' + file)
+        print('Found files local : ', file)
         return file
     # Update global request ID
     # Send search request to peers
