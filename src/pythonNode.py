@@ -302,11 +302,23 @@ def unregister_with_bs(bs_ip, bs_port, self_ip, self_port, self_name):
         return False
 
 
+# Check whether local file contains the words in query
+def check_query_against_local_file(main, sub_split):
+    index = -1
+    for word in sub_split:
+        index = main.find(word, index + 1)
+        if index == -1:
+            return False
+    return True
+
+
 # Check whether file is available locally in file list
 def get_matching_file_local(search_file):
     matched_file_list = []
+    search_file = search_file.lower()
+    search_file_words = search_file.split()
     for local_file in myFiles:
-        if search_file in local_file.split():
+        if check_query_against_local_file(local_file.lower(), search_file_words) and local_file not in matched_file_list:
             matched_file_list.append(local_file)
 
     print("Matched Files List : ", matched_file_list)
