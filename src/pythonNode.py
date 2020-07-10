@@ -451,7 +451,7 @@ if register_with_bs(port_self, name_self) :
     # init_udp_server_thread(ip_self, port_self)
 
     while True:
-        query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
+        query = input("1. Press X to leave the network.\n2. Press S to view the current status of the node.\n3. Press search query to search.\n")
         if query == 'X':
             # Executing unregistering process
             is_un_registered = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
@@ -470,6 +470,15 @@ if register_with_bs(port_self, name_self) :
                     else:
                         print("Error Occurred while leaving the BS and peers. Tried twice hence exiting")
                         exit()
+
+        elif query == 'S':
+            print('IP : ', ip_self)
+            print('Port : ', port_self)
+            print('Available Files : ', myFiles)
+            print('Connected Nodes : ', myConnectedNodes)
+            print('Search Requests Initiated: ', mySearchRequests)
+            print('Other Search Requests : ', otherSearchRequests)
+
         else:
             found, local, file = searchFile(ip_self, port_self, query, 0, True)
             if found:
