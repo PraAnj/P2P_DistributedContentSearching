@@ -99,12 +99,13 @@ class PeerThread(threading.Thread):
         self.nodeSocket.sendto(bytes(response, 'UTF-8'), self.peerAddress)
         # print ("Peer at ", self.peerAddress , " disconnected...")
 
+
 # Randomly pick files for the node
 def init_random_file_list():
-    numberOfBooks = random.randrange(3,6)
-    fileNames = open("../File Names.txt", "r").read().split('\n')
-    for x in range(numberOfBooks):
-        book = fileNames[random.randrange(0, len(fileNames))]
+    number_of_books = random.randrange(3, 6)
+    file_names = open("../File Names.txt", "r").read().split('\n')
+    for x in range(number_of_books):
+        book = file_names[random.randrange(0, len(file_names))]
         if book not in myFiles:
             myFiles.append(book)
     print("My Files: ", myFiles)
@@ -276,12 +277,12 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
 
 
 # De-registration with BS and notify peers
-def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
+def unregister_with_bs(bs_ip, bs_port, self_ip, self_port, self_name):
     print("Leaving the network.")
     # Send de-registration to BS
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.connect((ip_bs, port_bs))
-    server.send(("0033 UNREG " + ip_self + " " + str(port_self) + " " + name_self).encode('utf-8'))
+    server.connect((bs_ip, bs_port))
+    server.send(("0033 UNREG " + self_ip + " " + str(self_port) + " " + self_name).encode('utf-8'))
 
     # Receive response from BS for registration
     from_server = server.recvfrom(2048)
@@ -292,7 +293,7 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
     if server_response[1] == 'UNROK' and server_response[2] == '0':
         # Received correct response from the BS
         print('Successfully received response from the BS')
-        is_leaving_success = leave_2_peers(ip_self, port_self, server_response)
+        is_leaving_success = leave_2_peers(self_ip, self_port, server_response)
         return is_leaving_success
     else:
         # Received an incorrect response from the BS
@@ -301,14 +302,15 @@ def unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self):
 
 
 # Check whether file is available locally in file list
-def get_matching_file_local(query):
+def get_matching_file_local(search_file):
     matched_file_list = []
-    for file in myFiles:
-        if query in file.split():
-            matched_file_list.append(file)
+    for local_file in myFiles:
+        if search_file in local_file.split():
+            matched_file_list.append(local_file)
 
     print("Matched Files List : ", matched_file_list)
     return matched_file_list
+
 
 def prefixLengthToRequest(request):
     length = len(request) + 5
@@ -428,8 +430,8 @@ if register_with_bs(ip_self, port_self, name_self) :
         query = input("1. Press X to leave the network.\n2. Press search query to search.\n") 
         if query == 'X':
             # Executing unregistering process
-            is_unregisterd = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-            if is_unregisterd:
+            is_un_registered = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+            if is_un_registered:
                 print("Leaved the BS and peers successfully")
                 exit()
             else:
@@ -437,8 +439,8 @@ if register_with_bs(ip_self, port_self, name_self) :
                 # Retrying to leave the network again
                 query = input("1. Press X to try again to leave the network.\n")
                 if query == 'X':
-                    is_unregisterd = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
-                    if is_unregisterd:
+                    is_un_registered = unregister_with_bs(ip_bs, port_bs, ip_self, port_self, name_self)
+                    if is_un_registered:
                         print("Leaved the BS and peers successfully")
                         exit()
                     else:
