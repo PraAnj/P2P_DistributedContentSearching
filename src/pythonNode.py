@@ -3,6 +3,7 @@ import socket
 import sys
 import threading
 import shlex
+import re
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -315,6 +316,10 @@ def check_query_against_local_file(main, sub_split):
             return False
     return True
 
+def isQueryMatch(search_string, input_string):
+  raw_search_string = r"\b" + search_string + r"\b"
+  match_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
+  return ( match_output is not None )
 
 # Check whether file is available locally in file list
 def get_matching_file_local(search_file):
