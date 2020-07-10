@@ -40,6 +40,8 @@ class PeerThread(threading.Thread):
         reqType = res[1]
 
         if reqType == 'JOIN':
+            # Maximum number of nodes a node can join is 5
+            # If already connected to 5 nodes decline the request
             if len(myConnectedNodes) > 5:
                 print('Max number of nodes connected. Declining request')
                 return '0016 JOINOK 9999'
@@ -110,8 +112,9 @@ def init_random_file_list():
     count = 0
     while number_of_books > count:
         book = file_names[random.randrange(0, len(file_names))]
-        if book not in myFiles:
-            count = count + 1
+
+        if book not in myFiles: # To avoid duplicating files in the list
+            count = count + 1   # To avoid creating file lists less than 3 when no of files is 3 and duplicate files found
             myFiles.append(book)
             
     print("My Files: ", myFiles)
@@ -119,11 +122,10 @@ def init_random_file_list():
 
 def process_join_response_from_peers(msg):
     response = (msg[0]).decode('utf-8').split()
-    if response[2] == '0' :
-        return True
-    else :
-        return False
 
+    # If 0 join response is successful
+    # If 9999 join response not successful
+    return response[2] == '0'
 
 # Process the response for leave from peers
 def process_leave_response_from_peers(msg):
@@ -140,8 +142,11 @@ def process_leave_response_from_peers(msg):
 def acknowledge_2_peers(ip, port, name, serverResponse):
     global myConnectedNodes
 
+    # Two random nodes recieved from BS
     if (len(serverResponse)> 5):
         print("Peer1: ",serverResponse[3], int(serverResponse[4]))
+
+        # Send join request to first peer
         peer1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         peer1.connect((serverResponse[3], int(serverResponse[4])))
         peer1.send(("0033 JOIN " + ip + " " + str(port)).encode('utf-8'))
@@ -154,8 +159,9 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
             isSuccess = True
         else :
             print('Error occurred while joining Peer1')
-            isSuccess = handle_errors_in_registration(ip, port, name) 
+            isSuccess = handle_errors_in_registration(ip, port, name) # If join request failed, unregister and register again with the same ip and port to get new 2 random nodes
         
+        # If first node joined successfully, send the join request to second node
         if isSuccess :
             print("Peer2: ",serverResponse[5], int(serverResponse[6]))
             peer2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -164,19 +170,26 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
             
             from_peer2 = peer2.recvfrom(2048)
             peer2.close()
+
             if (process_join_response_from_peers(from_peer2)) :
                 print('Peer2 joined successfully')
+                
+                # If both nodes connected successfully add them to myConnectedNodes
                 myConnectedNodes.extend([(serverResponse[3], serverResponse[4]), (serverResponse[5], serverResponse[6])])
-                print('My connected nodes: ',myConnectedNodes)
+                print('My connected nodes: ', myConnectedNodes)
+
                 return True
             else :
                 print('Error occurred while joining Peer2')
                 isSuccess = handle_errors_in_registration(ip, port, name)
+
                 if isSuccess :
                     myConnectedNodes.extend([(serverResponse[3], serverResponse[4]), (serverResponse[5], serverResponse[6])])
-                    print('My connected nodes: ',myConnectedNodes)
+                    print('My connected nodes: ', myConnectedNodes)
+
                 return isSuccess
-        
+    
+    # One node recieved from BS
     elif (len(serverResponse)> 3):
         print("Peer: ",serverResponse[3], int(serverResponse[4]))
         peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -185,17 +198,21 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
 
         from_peer = peer.recvfrom(2048)
         peer.close()
+
         if (process_join_response_from_peers(from_peer)) :
             print('Peer joined successfully')
+
             myConnectedNodes.append((serverResponse[3], serverResponse[4]))
-            print('My connected nodes: ',myConnectedNodes)
+            print('My connected nodes: ', myConnectedNodes)
+
             return True
         else :
             print('Error occurred while joining Peer')
             isSuccess = handle_errors_in_registration(ip, port, name)
+
             if isSuccess :
                 myConnectedNodes.append((serverResponse[3], serverResponse[4]))
-                print('My connected nodes: ',myConnectedNodes)
+                print('My connected nodes: ', myConnectedNodes)
             return isSuccess
 
 
@@ -254,6 +271,7 @@ def register_with_bs(port, name):
             # first node of te netwrok registered
             return True
         else:
+            # Registration response contains an error code
             if serverResponse[2] == registrationErrorCodes["commandError"] :
                 print('Error in command. Please try again!')
                 return False
@@ -261,8 +279,10 @@ def register_with_bs(port, name):
                 print('Bootstrap Server is full! Please try again later')
                 return False
             else :
+                # Already registered or given IP and port is used by another node. Therefore unregister and register again
                 return handle_errors_in_registration(ip_self, port, name, True)
     else:
+        # Registration response contains details of one / two random nodes in the network. Send join requests
         return acknowledge_2_peers(ip_self, port_self, name_self, serverResponse)
 
 
@@ -271,15 +291,16 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
     global port_self
     global name_self
     
-    # unregister first
+    # Unregister first
     unregister_with_bs(ip_bs, port_bs, ip, port, name)
 
     if isReg :
         print('Given ip and port is already used by another node. Please try a different ip and port')
-        # get user arguements
+        # Get new IP and port from user
         ip_self, port_self, name_self = get_user_arguements(True)
         isSuccess = register_with_bs(ip_self, port_self, name_self)
     else :
+        # Again register using same IP and port to get 2 new random nodes
         print('Getting 2 new random nodes ')
         isSuccess = register_with_bs(ip, port, name)
 
