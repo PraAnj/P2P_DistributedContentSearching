@@ -233,17 +233,21 @@ def leave_2_peers(ip, port, server_response):
 
 
 # Registration with BS and acknowledge peers
-def register_with_bs(ip, port, name):
+def register_with_bs(port, name):
+    global ip_self
+
     # Send registration to BS
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.connect((ip_bs, port_bs))
-    server.send(("0033 REG " + ip + " " + str(port) + " " +  name).encode('utf-8'))
+    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    serverSocket.connect((ip_bs, port_bs))
+    ip_self = serverSocket.getsockname()[0]
+    print('IP of the node: ', ip_self)
+    serverSocket.send(("0033 REG " + ip_self + " " + str(port) + " " +  name).encode('utf-8'))
 
     # Receive response from BS for registration
-    from_server = server.recvfrom(2048)
+    from_server = serverSocket.recvfrom(2048)
     serverResponse = (from_server[0]).decode('utf-8').split()
     print('BS Response: ',serverResponse)
-    server.close()
+    serverSocket.close()
     
     if len(serverResponse) == 3 :
         if serverResponse[2] in registrationSuccessCodes:
@@ -257,7 +261,7 @@ def register_with_bs(ip, port, name):
                 print('Bootstrap Server is full! Please try again later')
                 return False
             else :
-                return handle_errors_in_registration(ip, port, name, True)
+                return handle_errors_in_registration(ip_self, port, name, True)
     else:
         return acknowledge_2_peers(ip_self, port_self, name_self, serverResponse)
 
@@ -415,18 +419,16 @@ def get_user_arguements(isRetry = False):
         print("Port of BS:")
         port_bs = int(input())
 
-    print("IP of the new node:")
-    ip_self = input()
     print("Port of the new node:")
     port_self = int(input())
     print("Name of the new node")
     name_self = input()
     
-    return (ip_self, port_self, name_self)
+    return (port_self, name_self)
 
 # [TODO] Input validation, print usage if wrong
-if len(sys.argv) < 6 :
-    ip_self, port_self, name_self = get_user_arguements()
+if len(sys.argv) < 5 :
+    port_self, name_self = get_user_arguements()
 
 else:
     # BS details
@@ -434,14 +436,13 @@ else:
     port_bs = int(sys.argv[2])
 
     # Self details
-    ip_self = sys.argv[3] # can this be picked programatically
-    port_self = int(sys.argv[4])
-    name_self = sys.argv[5]
+    port_self = int(sys.argv[3])
+    name_self = sys.argv[4]
 
 # ip_self = socket.gethostbyname(socket.gethostname())
 # print ('Host IP is: ' + ip_self)
 
-if register_with_bs(ip_self, port_self, name_self) :
+if register_with_bs(port_self, name_self) :
     init_random_file_list()
 
     # Event loop for peer connections (UDP server) runs on a different thread
