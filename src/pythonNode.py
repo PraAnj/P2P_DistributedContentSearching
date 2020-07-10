@@ -330,7 +330,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             result += ' '
         return (True, True, result.strip())
     if not myConnectedNodes:
-        return (False, False, "")
+        return (False, False, "0010 ERROR")
 
     request = "SER " + ip_self + ' ' + str(port_self) + ' ' +  query + ' ' + str(hops)
     request = prefixLengthToRequest(request)
@@ -352,7 +352,8 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         server.send((request).encode('utf-8'))
 
         from_server = server.recvfrom(2048)
-        serverResponse = shlex.split((from_server[0]).decode('utf-8')) #shlex.split preserve quotes
+        responseString = (from_server[0]).decode('utf-8')
+        serverResponse = shlex.split(responseString) #shlex.split preserve quotes
         server.close()
         print(serverResponse)
 
@@ -364,11 +365,11 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
                     fileName = "\""+serverResponse[i]+"\""
                     result += fileName
                     result += ' '
-                return True, False, result.strip() # handle multiple files here
+                return True, False, result.strip()  # i am the originator of this
             else:
-                return True, False, serverResponse
+                return True, False, responseString  #same peer response forwarded
 
-    return (False, False, "")
+    return (False, False, "0010 ERROR")
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
