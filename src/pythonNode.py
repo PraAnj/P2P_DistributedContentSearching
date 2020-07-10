@@ -65,21 +65,24 @@ class PeerThread(threading.Thread):
 
         elif reqType == 'SER':
             print ('Search requet received : ' + requestString)
-
-            if requestString in mySearchRequests:
+            queryWithoutHops = requestString.rsplit(' ', 1)[0]
+            if queryWithoutHops in mySearchRequests:
                 print ('Search received to the originator again')
-            elif requestString in otherSearchRequests:
+            elif queryWithoutHops in otherSearchRequests:
                 print ('Search received again from a loop')
             else:
                 query = res[4]
-                found, local, files = searchFile(res[2], int(res[3]), query, False)
+                hops = int(res[5])
+                found, local, files = searchFile(res[2], int(res[3]), query, hops+1, False)
                 if found: # reply to the peer
                     if local:
-                        return prefixLengthToRequest('SEROK 1 ' + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + files )
+                        count = len(shlex.split(files))
+                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + files)
                     else: #Peer
                         return files
                 else:
                     return '0010 ERROR'
+            return '0010 ERROR'
         # Request Type cannot be identified
         return "Unrecognised request type"
         
@@ -313,7 +316,7 @@ def prefixLengthToRequest(request):
     print (lengthPrefix + ' ' + request)
     return lengthPrefix + ' ' + request
 
-def searchFile(ip_self, port_self, query, ownRequest):
+def searchFile(ip_self, port_self, query, hops, ownRequest):
     print ('Searching file :' + query)
     # Find in local files
     file = get_matching_file_local(query)
@@ -327,14 +330,14 @@ def searchFile(ip_self, port_self, query, ownRequest):
     if not myConnectedNodes:
         return (False, False, "")
 
-    request = "SER " + ip_self + " " + str(port_self) + " " +  query
+    request = "SER " + ip_self + ' ' + str(port_self) + ' ' +  query + ' ' + str(hops)
     request = prefixLengthToRequest(request)
 
-    # Update global request cache
+    # Update global request cache, without hops
     if ownRequest:
-        mySearchRequests.append(request)
+        mySearchRequests.append(request.rsplit(' ', 1)[0])
     else:
-        otherSearchRequests.append(request)
+        otherSearchRequests.append(request.rsplit(' ', 1)[0])
     # Send search request to peers
     # peer response will receive in PeerThread event loop
     for peer in myConnectedNodes:
@@ -353,7 +356,13 @@ def searchFile(ip_self, port_self, query, ownRequest):
 
         if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
             if ownRequest:
-                return True, False, serverResponse[6] # handle multiple files here
+                fileCount = int(serverResponse[2])
+                result = ''
+                for i in range(6, 6+fileCount):
+                    fileName = "\""+serverResponse[i]+"\""
+                    result += fileName
+                    result += ' '
+                return True, False, result.strip() # handle multiple files here
             else:
                 return True, False, serverResponse
 
@@ -436,7 +445,7 @@ if register_with_bs(ip_self, port_self, name_self) :
                         print("Error Occurred while leaving the BS and peers. Tried twice hence exiting")
                         exit()
         else:
-            found, local, file = searchFile(ip_self, port_self, query, True)
+            found, local, file = searchFile(ip_self, port_self, query, 0, True)
             if found:
                 print ('Found file : ' + file)
             else:
