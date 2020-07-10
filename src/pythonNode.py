@@ -34,7 +34,8 @@ class PeerThread(threading.Thread):
         global ip_self
         global port_self
 
-        res = requestString.split()
+        # res = requestString.split()
+        res = shlex.split(requestString)
         reqType = res[1]
 
         if reqType == 'JOIN':
@@ -332,7 +333,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
     if not myConnectedNodes:
         return (False, False, "0010 ERROR")
 
-    request = "SER " + ip_self + ' ' + str(port_self) + ' ' +  query + ' ' + str(hops)
+    request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
 
     # Update global request cache, without hops
