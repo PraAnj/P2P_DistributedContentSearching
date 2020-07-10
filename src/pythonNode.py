@@ -101,14 +101,18 @@ class PeerThread(threading.Thread):
         # print ("Peer at ", self.peerAddress , " disconnected...")
 
 
-# Randomly pick files for the node
+# Randomly pick files for the node    
 def init_random_file_list():
     number_of_books = random.randrange(3, 6)
     file_names = open("../File Names.txt", "r").read().split('\n')
-    for x in range(number_of_books):
+    
+    count = 0
+    while number_of_books > count:
         book = file_names[random.randrange(0, len(file_names))]
         if book not in myFiles:
+            count = count + 1
             myFiles.append(book)
+            
     print("My Files: ", myFiles)
 
 
