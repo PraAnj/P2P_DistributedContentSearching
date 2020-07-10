@@ -2,6 +2,7 @@ import random
 import socket
 import sys
 import threading
+import shlex
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -346,7 +347,7 @@ def searchFile(ip_self, port_self, query, ownRequest):
         server.send((request).encode('utf-8'))
 
         from_server = server.recvfrom(2048)
-        serverResponse = (from_server[0]).decode('utf-8').split()
+        serverResponse = shlex.split((from_server[0]).decode('utf-8')) #shlex.split preserve quotes
         server.close()
         print(serverResponse)
 
