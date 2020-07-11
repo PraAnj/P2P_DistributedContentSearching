@@ -77,7 +77,7 @@ class PeerThread(threading.Thread):
             else:
                 query = res[4]
                 hops = int(res[5])
-                found, local, files = searchFile(res[2], int(res[3]), query, hops+1, False)
+                found, local, files, location = searchFile(res[2], int(res[3]), query, hops+1, False)
                 if found: # reply to the peer
                     if local:
                         count = len(shlex.split(files))
@@ -394,9 +394,9 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             element = "\""+element+"\""
             result += str(element)
             result += ' '
-        return (True, True, result.strip())
+        return (True, True, result.strip(), 'Local Machine')
     if not myConnectedNodes:
-        return (False, False, "0010 ERROR")
+        return (False, False, "0010 ERROR", "")
 
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
@@ -423,6 +423,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         print(serverResponse)
 
         if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
+            location = serverResponse[3] + ':' + serverResponse[4]
             if ownRequest:
                 fileCount = int(serverResponse[2])
                 result = ''
@@ -430,11 +431,11 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
                     fileName = "\""+serverResponse[i]+"\""
                     result += fileName
                     result += ' '
-                return True, False, result.strip()  # i am the originator of this
+                return True, False, result.strip(), location  # i am the originator of this
             else:
-                return True, False, responseString  # same peer response forwarded
+                return True, False, responseString, location  # same peer response forwarded
 
-    return (False, False, "0010 ERROR")
+    return (False, False, "0010 ERROR", "")
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -519,9 +520,9 @@ if register_with_bs(port_self, name_self) :
             print('Other Search Requests : ', otherSearchRequests)
 
         else:
-            found, local, file = searchFile(ip_self, port_self, query, 0, True)
+            found, local, file, location = searchFile(ip_self, port_self, query, 0, True)
             if found:
-                print ('Found file : ' + file)
+                print ('Found file : ' + file + ' at ' + location)
             else:
                 print ('File not found.')
 
