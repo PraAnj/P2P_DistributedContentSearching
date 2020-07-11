@@ -41,8 +41,8 @@ class PeerThread(threading.Thread):
 
         if reqType == 'JOIN':
             # Maximum number of nodes a node can join is 5
-            # If already connected to 5 nodes decline the request
-            if len(myConnectedNodes) > 5:
+            # If already connected to 10 nodes decline the request
+            if len(myConnectedNodes) > 10:
                 print('Max number of nodes connected. Declining request')
                 return '0016 JOINOK 9999'
             else :
@@ -149,6 +149,7 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
         # Send join request to first peer
         peer1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         peer1.connect((serverResponse[3], int(serverResponse[4])))
+
         peer1_join_req = "JOIN " + ip + " " + str(port)
         peer1_join_req = prefixLengthToRequest(peer1_join_req)
         peer1.send(peer1_join_req.encode('utf-8'))
@@ -168,6 +169,7 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
             print("Peer2: ",serverResponse[5], int(serverResponse[6]))
             peer2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             peer2.connect((serverResponse[5], int(serverResponse[6])))
+
             peer2_join_req = "JOIN " + ip + " " + str(port)
             peer2_join_req = prefixLengthToRequest(peer2_join_req)
             peer2.send(peer2_join_req.encode('utf-8'))
@@ -198,6 +200,7 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
         print("Peer: ",serverResponse[3], int(serverResponse[4]))
         peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         peer.connect((serverResponse[3], int(serverResponse[4])))
+
         peer_join_req = "JOIN " + ip + " " + str(port)
         peer_join_req = prefixLengthToRequest(peer_join_req)
         peer.send(peer_join_req.encode('utf-8'))
@@ -235,7 +238,10 @@ def leave_2_peers(ip, port, server_response):
             print("Peer: ", node_ip, node_port)
             peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             peer.connect((node_ip, int(node_port)))
-            peer.send(("0033 LEAVE " + ip + " " + str(port)).encode('utf-8'))
+    
+            leave_req = "LEAVE " + ip + " " + str(port)
+            leave_req = prefixLengthToRequest(leave_req)
+            peer.send(leave_req.encode('utf-8'))
 
             from_peer = peer.recvfrom(2048)
             print("Response from peer for Leave Request: ", from_peer)
@@ -262,8 +268,10 @@ def register_with_bs(port, name):
     # Send registration to BS
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     serverSocket.connect((ip_bs, port_bs))
+
     ip_self = serverSocket.getsockname()[0]
     print('IP of the node: ', ip_self)
+
     reg_request = "REG " + ip_self + " " + str(port) + " " +  name
     reg_request = prefixLengthToRequest(reg_request)
     serverSocket.send(reg_request.encode('utf-8'))
@@ -321,7 +329,10 @@ def unregister_with_bs(bs_ip, bs_port, self_ip, self_port, self_name):
     # Send de-registration to BS
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.connect((bs_ip, bs_port))
-    server.send(("0033 UNREG " + self_ip + " " + str(self_port) + " " + self_name).encode('utf-8'))
+    
+    unreg_req = "UNREG " + self_ip + " " + str(self_port) + " " + self_name
+    unreg_req = prefixLengthToRequest(unreg_req)
+    server.send(unreg_req.encode('utf-8'))
 
     # Receive response from BS for registration
     from_server = server.recvfrom(2048)
