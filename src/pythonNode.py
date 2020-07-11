@@ -149,7 +149,9 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
         # Send join request to first peer
         peer1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         peer1.connect((serverResponse[3], int(serverResponse[4])))
-        peer1.send(("0033 JOIN " + ip + " " + str(port)).encode('utf-8'))
+        peer1_join_req = "JOIN " + ip + " " + str(port)
+        peer1_join_req = prefixLengthToRequest(peer1_join_req)
+        peer1.send(peer1_join_req.encode('utf-8'))
         
         from_peer1 = peer1.recvfrom(2048)
         peer1.close()
@@ -166,7 +168,9 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
             print("Peer2: ",serverResponse[5], int(serverResponse[6]))
             peer2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             peer2.connect((serverResponse[5], int(serverResponse[6])))
-            peer2.send(("0033 JOIN " + ip + " " + str(port)).encode('utf-8'))
+            peer2_join_req = "JOIN " + ip + " " + str(port)
+            peer2_join_req = prefixLengthToRequest(peer2_join_req)
+            peer2.send(peer2_join_req.encode('utf-8'))
             
             from_peer2 = peer2.recvfrom(2048)
             peer2.close()
@@ -194,7 +198,9 @@ def acknowledge_2_peers(ip, port, name, serverResponse):
         print("Peer: ",serverResponse[3], int(serverResponse[4]))
         peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         peer.connect((serverResponse[3], int(serverResponse[4])))
-        peer.send(("0033 JOIN " + ip + " " + str(port)).encode('utf-8'))
+        peer_join_req = "JOIN " + ip + " " + str(port)
+        peer_join_req = prefixLengthToRequest(peer_join_req)
+        peer.send(peer_join_req.encode('utf-8'))
 
         from_peer = peer.recvfrom(2048)
         peer.close()
@@ -258,7 +264,9 @@ def register_with_bs(port, name):
     serverSocket.connect((ip_bs, port_bs))
     ip_self = serverSocket.getsockname()[0]
     print('IP of the node: ', ip_self)
-    serverSocket.send(("0033 REG " + ip_self + " " + str(port) + " " +  name).encode('utf-8'))
+    reg_request = "REG " + ip_self + " " + str(port) + " " +  name
+    reg_request = prefixLengthToRequest(reg_request)
+    serverSocket.send(reg_request.encode('utf-8'))
 
     # Receive response from BS for registration
     from_server = serverSocket.recvfrom(2048)
