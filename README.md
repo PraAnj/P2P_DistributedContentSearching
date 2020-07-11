@@ -7,15 +7,28 @@
 ##### How to connect from python node
 
 1. Go to src
-2. Run the python script as below.
+2. You can run the python script in both ways mentioned below.
+
+Method 1
 
 > "cd src "    
-> "python pythonNode.py <ip\_bs> <port\_bs> <ip\_self> <port\_self> <name\_self>"    
-> ex: python pythonNode.py 192.168.1.2 55555 127.0.0.1 8081 node1     
+> "python pythonNode.py <ip\_bs> <port\_bs> <port\_self> <name\_self>"    
+> ex: python pythonNode.py 192.168.1.2 55555 8081 node1
+
+Method 2    
+
+> "cd src "    
+> "python pythonNode.py"    
+
+Then enter values according to the instructions.
 
 ##### To Exit from the network 
 
 1. Give X as the input to exit the network
+
+##### To search a file
+
+1. Type a word in the name of the file you need to find.
 
 ##### [Design doc link](https://docs.google.com/document/d/1uFmo2mkXFP7MTKHK0JH8DNljEBTw6HCyzuFfGKkhdEM/edit)
 
