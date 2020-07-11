@@ -358,7 +358,7 @@ def get_matching_file_local(search_file):
     print("Matched Files List : ", matched_file_list)
     return matched_file_list
 
-
+# Prefix command length as 4 characters before sending UDP msg
 def prefixLengthToRequest(request):
     length = len(request) + 5
     lengthPrefix = f'{length:04}'
@@ -387,8 +387,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         mySearchRequests.append(request.rsplit(' ', 1)[0])
     else:
         otherSearchRequests.append(request.rsplit(' ', 1)[0])
-    # Send search request to peers
-    # peer response will receive in PeerThread event loop
+    # Send search request to peers, handles in PeerThread event loop
     for peer in myConnectedNodes:
         ip_peer = peer[0]
         port_peer = peer[1]
@@ -414,7 +413,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
                     result += ' '
                 return True, False, result.strip()  # i am the originator of this
             else:
-                return True, False, responseString  #same peer response forwarded
+                return True, False, responseString  # same peer response forwarded
 
     return (False, False, "0010 ERROR")
 
