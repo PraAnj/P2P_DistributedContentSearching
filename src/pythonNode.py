@@ -127,6 +127,7 @@ def process_join_response_from_peers(msg):
     # If 9999 join response not successful
     return response[2] == '0'
 
+
 # Process the response for leave from peers
 def process_leave_response_from_peers(msg):
     response = (msg[0]).decode('utf-8').split()
@@ -239,9 +240,9 @@ def leave_2_peers(ip, port, server_response):
             peer = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             peer.connect((node_ip, int(node_port)))
     
-            leave_req = "LEAVE " + ip + " " + str(port)
-            leave_req = prefixLengthToRequest(leave_req)
-            peer.send(leave_req.encode('utf-8'))
+            leave_request = "LEAVE " + ip + " " + str(port)
+            leave_request = prefixLengthToRequest(leave_request)
+            peer.send(leave_request.encode('utf-8'))
 
             from_peer = peer.recvfrom(2048)
             print("Response from peer for Leave Request: ", from_peer)
@@ -330,9 +331,9 @@ def unregister_with_bs(bs_ip, bs_port, self_ip, self_port, self_name):
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.connect((bs_ip, bs_port))
     
-    unreg_req = "UNREG " + self_ip + " " + str(self_port) + " " + self_name
-    unreg_req = prefixLengthToRequest(unreg_req)
-    server.send(unreg_req.encode('utf-8'))
+    unreg_request = "UNREG " + self_ip + " " + str(self_port) + " " + self_name
+    unreg_request = prefixLengthToRequest(unreg_request)
+    server.send(unreg_request.encode('utf-8'))
 
     # Receive response from BS for registration
     from_server = server.recvfrom(2048)
@@ -364,6 +365,7 @@ def isQueryMatch(search_string, input_string):
   raw_search_string = r"\b" + search_string + r"\b"
   match_output = re.search(raw_search_string, input_string, flags=re.IGNORECASE)
   return ( match_output is not None )
+
 
 # Check whether file is available locally in file list
 def get_matching_file_local(search_file):
