@@ -305,12 +305,12 @@ def handle_errors_in_registration(ip, port, name, isReg = False):
     if isReg :
         print('Given ip and port is already used by another node. Please try a different ip and port')
         # Get new IP and port from user
-        ip_self, port_self, name_self = get_user_arguements(True)
-        isSuccess = register_with_bs(ip_self, port_self, name_self)
+        port_self, name_self = get_user_arguements(True)
+        isSuccess = register_with_bs(port_self, name_self)
     else :
         # Again register using same IP and port to get 2 new random nodes
         print('Getting 2 new random nodes ')
-        isSuccess = register_with_bs(ip, port, name)
+        isSuccess = register_with_bs(port, name)
 
     return isSuccess
 
