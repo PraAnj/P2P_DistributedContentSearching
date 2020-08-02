@@ -5,8 +5,11 @@ import threading
 import shlex
 import re
 import flask
+from flask import jsonify
 import requests
 import datetime
+import hashlib
+import string
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -472,9 +475,11 @@ def init_udp_server_thread(host='127.0.0.1', port=1234):
         newThread = PeerThread(nodeSocket, peerAddress, data)
         newThread.start()
 
+# Input size is in MBs
 def getRandomData(filename, size):
     # generate random data to be downloaded
-    return "asdklfjahldkjahljkfahlsdkjhf9eur3r0iuwefai -> " + filename
+    data = ''.join([random.choice(string.ascii_letters) for i in range(size*1024*1024)])
+    return data
 
 def runRESTServerForDownloadRequests(rest_port_self):
     app = flask.Flask(__name__)
@@ -482,7 +487,19 @@ def runRESTServerForDownloadRequests(rest_port_self):
 
     @app.route('/download/<filename>', methods = ['GET'])
     def download(filename):
-        return getRandomData(filename, random.randint(2,10))
+        datasize_MB = random.randint(2,10)
+        data = getRandomData(filename, datasize_MB)
+        hash_SHA = hashlib.sha256(data.encode('utf-8')).hexdigest()
+        print('Data generated: hash = ' + hash_SHA + ', size = ' + str(datasize_MB) + 'MB')
+
+        return jsonify(
+            hash=hash_SHA,
+            datasize=datasize_MB,
+            data=data,
+            filename=filename,
+            ip=ip_self,
+            udp_port=str(port_self)
+            )
 
     @app.route('/', methods=['GET'])
     def home():
@@ -492,8 +509,14 @@ def runRESTServerForDownloadRequests(rest_port_self):
 
 def downloadFileViaRESTCall(ip, port, filename):
     x = requests.get('http://' + ip + ':' + str(port) + '/download/' + filename)
-    print(x.status_code)
-    print(x.text)
+    dictResponce = x.json()
+    hash_SHA = hashlib.sha256(dictResponce['data'].encode('utf-8')).hexdigest()
+    print(dictResponce['hash'] + ' is received from server')
+    print(hash_SHA + ' is generated locally.')
+
+    # with open(filename, 'w') as f:
+    #     f.write(dictResponce['data'])
+    #     print('Data downloaded: size = ' + str(dictResponce['datasize']) + 'MB')
 
 def get_user_arguements(isRetry = False):
     global ip_bs

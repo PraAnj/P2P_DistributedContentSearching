@@ -16,12 +16,12 @@
 Method 1
 
 > "cd src "
-> "python pythonNode.py <ip\_bs> <port\_bs> <usd\_port\_self> <name\_self> <restapi\_port>"
+> "python pythonNode.py <ip\_bs> <port\_bs> <usd\_port\_self> <name\_self> <restapi\_port>"    
 > ex: python pythonNode.py 192.168.1.5 55555 8081 node1 81
 
 Method 2
 
-> "cd src "
+> "cd src "    
 > "python pythonNode.py"
 
 Then enter values according to the instructions.
