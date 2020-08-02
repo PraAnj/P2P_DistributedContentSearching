@@ -4,6 +4,8 @@ import sys
 import threading
 import shlex
 import re
+import flask
+import requests
 
 myConnectedNodes = []
 mySearchRequests = []
@@ -11,6 +13,7 @@ otherSearchRequests = []
 myFiles = []
 ip_self = ''
 port_self = 0
+rest_port_self = 80
 
 registrationSuccessCodes = ['0', '1', '2']
 registrationErrorCodes = {
@@ -77,11 +80,11 @@ class PeerThread(threading.Thread):
             else:
                 query = res[4]
                 hops = int(res[5])
-                found, local, files, location = searchFile(res[2], int(res[3]), query, hops+1, False)
+                found, local, files, rest_ip, rest_port = searchFile(res[2], int(res[3]), query, hops+1, False)
                 if found: # reply to the peer
                     if local:
                         count = len(shlex.split(files))
-                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(port_self) +  ' ' + str(5) + ' ' + files)
+                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(5) + ' ' + files)
                     else: #Peer
                         return files
                 else:
@@ -396,9 +399,9 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             element = "\""+element+"\""
             result += str(element)
             result += ' '
-        return (True, True, result.strip(), 'Local Machine')
+        return (True, True, result.strip(), 'Local Machine', rest_port_self)
     if not myConnectedNodes:
-        return (False, False, "0010 ERROR", "")
+        return (False, False, "0010 ERROR", "", 0)
 
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
@@ -425,7 +428,8 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         print(serverResponse)
 
         if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
-            location = serverResponse[3] + ':' + serverResponse[4]
+            rest_ip = serverResponse[3]
+            rest_port = serverResponse[4]
             if ownRequest:
                 fileCount = int(serverResponse[2])
                 result = ''
@@ -433,11 +437,11 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
                     fileName = "\""+serverResponse[i]+"\""
                     result += fileName
                     result += ' '
-                return True, False, result.strip(), location  # i am the originator of this
+                return True, False, result.strip(), rest_ip, int(rest_port)  # i am the originator of this
             else:
-                return True, False, responseString, location  # same peer response forwarded
+                return True, False, responseString,  rest_ip, int(rest_port) # same peer response forwarded
 
-    return (False, False, "0010 ERROR", "")
+    return (False, False, "0010 ERROR", "", 0)
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -450,6 +454,29 @@ def init_udp_server_thread(host='127.0.0.1', port=1234):
         data, peerAddress = nodeSocket.recvfrom(2048)    
         newThread = PeerThread(nodeSocket, peerAddress, data)
         newThread.start()
+
+def getRandomData(filename, size):
+    # generate random data to be downloaded
+    return "asdklfjahldkjahljkfahlsdkjhf9eur3r0iuwefai -> " + filename
+
+def runRESTServerForDownloadRequests(rest_port_self):
+    app = flask.Flask(__name__)
+    # app.config["DEBUG"] = True
+
+    @app.route('/download/<filename>', methods = ['GET'])
+    def download(filename):
+        return getRandomData(filename, random.randint(2,10))
+
+    @app.route('/', methods=['GET'])
+    def home():
+        return "<h1>File Download service</h1><p>Post a GET request as http://172.0.0.1:<rest_port_self>/download/filename.txt</p>"
+
+    app.run(host='0.0.0.0', port=rest_port_self)
+
+def downloadFileViaRESTCall(ip, port, filename):
+    x = requests.get('http://' + ip + ':' + str(port) + '/download/' + filename)
+    print(x.status_code)
+    print(x.text)
 
 def get_user_arguements(isRetry = False):
     global ip_bs
@@ -465,12 +492,14 @@ def get_user_arguements(isRetry = False):
     port_self = int(input())
     print("Name of the new node")
     name_self = input()
+    print("Port of the REST api")
+    rest_port_self = int(input())
     
-    return (port_self, name_self)
+    return (port_self, name_self, rest_port_self)
 
 # [TODO] Input validation, print usage if wrong
-if len(sys.argv) < 5 :
-    port_self, name_self = get_user_arguements()
+if len(sys.argv) < 6 :
+    port_self, name_self, rest_port_self = get_user_arguements()
 
 else:
     # BS details
@@ -480,6 +509,7 @@ else:
     # Self details
     port_self = int(sys.argv[3])
     name_self = sys.argv[4]
+    rest_port_self = int(sys.argv[5])
 
 # ip_self = socket.gethostbyname(socket.gethostname())
 # print ('Host IP is: ' + ip_self)
@@ -487,10 +517,13 @@ else:
 if register_with_bs(port_self, name_self) :
     init_random_file_list()
 
+    # Start flask REST api to handle download requests
+    restApiThread = threading.Thread(target=runRESTServerForDownloadRequests, args=(rest_port_self,))
+    restApiThread.start()
+
     # Event loop for peer connections (UDP server) runs on a different thread
     peerEventLoop = threading.Thread(target=init_udp_server_thread, args=(ip_self, port_self,))
     peerEventLoop.start()
-    # init_udp_server_thread(ip_self, port_self)
 
     while True:
         query = input("1. Press X to leave the network.\n2. Press S to view the current status of the node.\n3. Press search query to search.\n")
@@ -522,9 +555,10 @@ if register_with_bs(port_self, name_self) :
             print('Other Search Requests : ', otherSearchRequests)
 
         else:
-            found, local, file, location = searchFile(ip_self, port_self, query, 0, True)
+            found, local, file, rest_ip, rest_port = searchFile(ip_self, port_self, query, 0, True)
             if found:
-                print ('Found file : ' + file + ' at ' + location)
+                print ('Found file : ' + file + ' at ' + rest_ip + ":" + str(rest_port))
+                downloadFileViaRESTCall(rest_ip, rest_port, file)
             else:
                 print ('File not found.')
 
