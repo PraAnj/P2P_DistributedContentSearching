@@ -6,11 +6,18 @@ import shlex
 import re
 import flask
 import requests
+import datetime
 
 myConnectedNodes = []
 mySearchRequests = []
 otherSearchRequests = []
+
+noOfMsgsRecieved = 0
+noOfMsgsAnswered = 0
+noOfMsgsForwarded = 0
+
 myFiles = []
+
 ip_self = ''
 port_self = 0
 rest_port_self = 80
@@ -37,6 +44,8 @@ class PeerThread(threading.Thread):
         global otherSearchRequests
         global ip_self
         global port_self
+        global noOfMsgsRecieved
+        global noOfMsgsAnswered
 
         # res = requestString.split()
         res = shlex.split(requestString)
@@ -71,7 +80,8 @@ class PeerThread(threading.Thread):
                 return '0013 LEAVEOK 9999'
 
         elif reqType == 'SER':
-            print ('Search requet received : ' + requestString)
+            noOfMsgsRecieved = noOfMsgsRecieved + 1
+            print ('Search request received : ' + requestString)
             queryWithoutHops = requestString.rsplit(' ', 1)[0]
             if queryWithoutHops in mySearchRequests:
                 print ('Search received to the originator again')
@@ -80,11 +90,15 @@ class PeerThread(threading.Thread):
             else:
                 query = res[4]
                 hops = int(res[5])
-                found, local, files, rest_ip, rest_port = searchFile(res[2], int(res[3]), query, hops+1, False)
+                hops = hops + 1
+                found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
+
+                noOfMsgsAnswered = noOfMsgsAnswered + 1
+
                 if found: # reply to the peer
                     if local:
                         count = len(shlex.split(files))
-                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(5) + ' ' + files)
+                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
                     else: #Peer
                         return files
                 else:
@@ -390,6 +404,8 @@ def prefixLengthToRequest(request):
     return lengthPrefix + ' ' + request
 
 def searchFile(ip_self, port_self, query, hops, ownRequest):
+    global noOfMsgsForwarded
+
     print ('Searching file :' + query)
     # Find in local files
     file = get_matching_file_local(query)
@@ -399,9 +415,9 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             element = "\""+element+"\""
             result += str(element)
             result += ' '
-        return (True, True, result.strip(), 'Local Machine', rest_port_self)
+        return (True, True, result.strip(), 'Local Machine', rest_port_self, str(hops))
     if not myConnectedNodes:
-        return (False, False, "0010 ERROR", "", 0)
+        return (False, False, "0010 ERROR", "", 0, "0")
 
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
@@ -416,6 +432,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         ip_peer = peer[0]
         port_peer = peer[1]
 
+        noOfMsgsForwarded = noOfMsgsForwarded + 1
         print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
         server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server.connect((ip_peer, int(port_peer)))
@@ -437,11 +454,11 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
                     fileName = "\""+serverResponse[i]+"\""
                     result += fileName
                     result += ' '
-                return True, False, result.strip(), rest_ip, int(rest_port)  # i am the originator of this
+                return True, False, result.strip(), rest_ip, int(rest_port), serverResponse[5]  # i am the originator of this
             else:
-                return True, False, responseString,  rest_ip, int(rest_port) # same peer response forwarded
+                return True, False, responseString,  rest_ip, int(rest_port), serverResponse[5] # same peer response forwarded
 
-    return (False, False, "0010 ERROR", "", 0)
+    return (False, False, "0010 ERROR", "", 0, str(hops))
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -553,14 +570,21 @@ if register_with_bs(port_self, name_self) :
             print('Connected Nodes : ', myConnectedNodes)
             print('Search Requests Initiated: ', mySearchRequests)
             print('Other Search Requests : ', otherSearchRequests)
+            print('No of queries received : ', noOfMsgsRecieved)
+            print('No of queries forwarded : ', noOfMsgsForwarded)
+            print('No of queries answered : ', noOfMsgsAnswered)
 
         else:
-            found, local, file, rest_ip, rest_port = searchFile(ip_self, port_self, query, 0, True)
+            start_time = datetime.datetime.now()
+            found, local, file, rest_ip, rest_port, hops = searchFile(ip_self, port_self, query, 1, True)
+            end_time = datetime.datetime.now()
             if found:
                 print ('Found file : ' + file + ' at ' + rest_ip + ":" + str(rest_port))
                 downloadFileViaRESTCall(rest_ip, rest_port, file)
             else:
                 print ('File not found.')
+            print ('Latency: ' + str(end_time - start_time))
+            print('Hops : ' + hops)
 
 # [TODO]Open REST Api to handle download requests
 
