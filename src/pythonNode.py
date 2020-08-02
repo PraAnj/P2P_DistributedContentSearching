@@ -85,28 +85,26 @@ class PeerThread(threading.Thread):
         elif reqType == 'SER':
             noOfMsgsRecieved = noOfMsgsRecieved + 1
             print ('Search request received : ' + requestString)
-            queryWithoutHops = requestString.rsplit(' ', 1)[0]
-            if queryWithoutHops in mySearchRequests:
-                print ('Search received to the originator again')
-            elif queryWithoutHops in otherSearchRequests:
-                print ('Search received again from a loop')
+            # queryWithoutHops = requestString.rsplit(' ', 1)[0]
+            # if queryWithoutHops in mySearchRequests:
+            #     print ('Search received to the originator again')
+            # elif queryWithoutHops in otherSearchRequests:
+            #     print ('Search received again from a loop')
+            query = res[4]
+            hops = int(res[5])
+            hops = hops + 1
+            found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
+
+            noOfMsgsAnswered = noOfMsgsAnswered + 1
+
+            if found: # reply to the peer
+                if local:
+                    count = len(shlex.split(files))
+                    return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
+                else: #Peer
+                    return files
             else:
-                query = res[4]
-                hops = int(res[5])
-                hops = hops + 1
-                found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
-
-                noOfMsgsAnswered = noOfMsgsAnswered + 1
-
-                if found: # reply to the peer
-                    if local:
-                        count = len(shlex.split(files))
-                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
-                    else: #Peer
-                        return files
-                else:
-                    return '0010 ERROR'
-            return '0010 ERROR'
+                return '0010 ERROR'
         # Request Type cannot be identified
         return "Unrecognised request type"
         
@@ -422,6 +420,9 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
     if not myConnectedNodes:
         return (False, False, "0010 ERROR", "", 0, "0")
 
+    if hops > 20:
+        return (False, False, "0010 ERROR", "", 0, "0")
+
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
 
@@ -445,9 +446,9 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         responseString = (from_server[0]).decode('utf-8')
         serverResponse = shlex.split(responseString) #shlex.split preserve quotes
         server.close()
-        print(serverResponse)
 
         if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
+            print(serverResponse)
             rest_ip = serverResponse[3]
             rest_port = serverResponse[4]
             if ownRequest:
@@ -603,7 +604,8 @@ if register_with_bs(port_self, name_self) :
             end_time = datetime.datetime.now()
             if found:
                 print ('Found file : ' + file + ' at ' + rest_ip + ":" + str(rest_port))
-                downloadFileViaRESTCall(rest_ip, rest_port, file)
+                if not local:
+                    downloadFileViaRESTCall(rest_ip, rest_port, file)
             else:
                 print ('File not found.')
             print ('Latency: ' + str(end_time - start_time))
