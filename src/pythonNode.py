@@ -93,18 +93,21 @@ class PeerThread(threading.Thread):
             query = res[4]
             hops = int(res[5])
             hops = hops + 1
-            found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
+            found, local, files, rest_ip, rest_port, hops_new = searchFile(res[2], int(res[3]), query, hops, False)
 
             noOfMsgsAnswered = noOfMsgsAnswered + 1
 
             if found: # reply to the peer
+                count = len(shlex.split(files))
                 if local:
-                    count = len(shlex.split(files))
-                    return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
+                   # count = len(shlex.split(files))
+                    return prefixLengthToRequest('SEROK '+ str(count) + ' ' + rest_ip + ' ' + str(rest_port) +  ' ' + hops_new + ' ' + files)
                 else: #Peer
-                    return files
+                    return prefixLengthToRequest('SEROK '+ str(count) + ' ' + rest_ip + ' ' + str(rest_port) +  ' ' + hops_new + ' ' + files)
+                   # return files
             else:
-                return '0010 ERROR'
+                return prefixLengthToRequest('SEROK '+ str(0) + ' ' + rest_ip + ' ' + str(rest_port) +  ' ' + hops_new + ' ' + files)
+               # return '0010 ERROR'
         # Request Type cannot be identified
         return "Unrecognised request type"
         
@@ -404,7 +407,7 @@ def prefixLengthToRequest(request):
     print (lengthPrefix + ' ' + request)
     return lengthPrefix + ' ' + request
 
-def searchFile(ip_self, port_self, query, hops, ownRequest):
+def searchFile(searchingIP, searchingPort, query, hops, ownRequest):
     global noOfMsgsForwarded
 
     print ('Searching file :' + query)
@@ -416,14 +419,14 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             element = "\""+element+"\""
             result += str(element)
             result += ' '
-        return (True, True, result.strip(), 'Local Machine', rest_port_self, str(hops))
+        return (True, True, result.strip(), ip_self, rest_port_self, str(hops)) # local machine
     if not myConnectedNodes:
-        return (False, False, "0010 ERROR", "", 0, "0")
+        return (False, False, "", "0", 0, str(hops))
 
-    if hops > 20:
-        return (False, False, "0010 ERROR", "", 0, "0")
+    if hops >= 20:
+        return (False, False, "", "0", 0, str(hops))
 
-    request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
+    request = "SER " + searchingIP + ' ' + str(searchingPort) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
 
     # Update global request cache, without hops
@@ -432,37 +435,42 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
     else:
         otherSearchRequests.append(request.rsplit(' ', 1)[0])
     # Send search request to peers, handles in PeerThread event loop
+
+    hops_new = str(hops)
     for peer in myConnectedNodes:
         ip_peer = peer[0]
         port_peer = peer[1]
 
-        noOfMsgsForwarded = noOfMsgsForwarded + 1
-        print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
-        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server.connect((ip_peer, int(port_peer)))
-        server.send((request).encode('utf-8'))
+        isSearchingPeer = (ip_peer == searchingIP and port_peer == str(searchingPort))
+        if (ownRequest or not(isSearchingPeer)):
+            noOfMsgsForwarded = noOfMsgsForwarded + 1
+            print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
+            server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            server.connect((ip_peer, int(port_peer)))
+            server.send((request).encode('utf-8'))
 
-        from_server = server.recvfrom(2048)
-        responseString = (from_server[0]).decode('utf-8')
-        serverResponse = shlex.split(responseString) #shlex.split preserve quotes
-        server.close()
+            from_server = server.recvfrom(2048)
+            responseString = (from_server[0]).decode('utf-8')
+            serverResponse = shlex.split(responseString) #shlex.split preserve quotes
+            server.close()
 
-        if len(serverResponse) >= 2 and serverResponse[1] == 'SEROK':
-            print(serverResponse)
             rest_ip = serverResponse[3]
             rest_port = serverResponse[4]
-            if ownRequest:
-                fileCount = int(serverResponse[2])
-                result = ''
-                for i in range(6, 6+fileCount):
-                    fileName = "\""+serverResponse[i]+"\""
-                    result += fileName
-                    result += ' '
-                return True, False, result.strip(), rest_ip, int(rest_port), serverResponse[5]  # i am the originator of this
-            else:
-                return True, False, responseString,  rest_ip, int(rest_port), serverResponse[5] # same peer response forwarded
-
-    return (False, False, "0010 ERROR", "", 0, str(hops))
+            hops_new = serverResponse[5]
+            if serverResponse[1] == 'SEROK':
+                print("Response string : " + responseString)
+                if (int(serverResponse[2]) > 0) :
+                    fileCount = int(serverResponse[2])
+                    result = ''
+                    for i in range(6, 6+fileCount):
+                        fileName = "\""+serverResponse[i]+"\""
+                        result += fileName
+                        result += ' '
+                    if ownRequest:
+                        return True, False, result.strip(), rest_ip, int(rest_port), serverResponse[5]  # i am the originator of this
+                    else:
+                        return True, False, result.strip(),  rest_ip, int(rest_port), serverResponse[5] # same peer response forwarded
+    return False, False, "",  "0", 0, hops_new
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
     nodeSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
