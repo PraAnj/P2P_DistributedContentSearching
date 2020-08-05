@@ -1,6 +1,7 @@
 import random
 import socket
 import sys
+import os
 import threading
 import shlex
 import re
@@ -510,14 +511,16 @@ def runRESTServerForDownloadRequests(rest_port_self):
 
 def downloadFileViaRESTCall(ip, port, filename):
     x = requests.get('http://' + ip + ':' + str(port) + '/download/' + filename)
-    dictResponce = x.json()
-    hash_SHA = hashlib.sha256(dictResponce['data'].encode('utf-8')).hexdigest()
-    print(dictResponce['hash'] + ' is received from server')
+    dictResponse = x.json()
+    hash_SHA = hashlib.sha256(dictResponse['data'].encode('utf-8')).hexdigest()
+    print(dictResponse['hash'] + ' is received from server')
     print(hash_SHA + ' is generated locally.')
 
-    # with open(filename, 'w') as f:
-    #     f.write(dictResponce['data'])
-    #     print('Data downloaded: size = ' + str(dictResponce['datasize']) + 'MB')
+    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+    with open(os.path.join(__location__, filename.strip('\"')), 'w') as f:
+        f.write(dictResponse['data'])
+        print('Data downloaded: size = ' + str(dictResponse['datasize']) + 'MB')
 
 def get_user_arguements(isRetry = False):
     global ip_bs
