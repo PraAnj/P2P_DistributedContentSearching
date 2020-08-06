@@ -85,13 +85,11 @@ class PeerThread(threading.Thread):
 
         elif reqType == 'SER':
             noOfMsgsRecieved = noOfMsgsRecieved + 1
-            print ('Search request received : ' + requestString)
+            # print ('Search request received : ' + requestString)
             queryWithoutHops = requestString.rsplit(' ', 1)[0]
-            if queryWithoutHops in mySearchRequests:
-                print ('Search received to the originator again')
-            elif queryWithoutHops in otherSearchRequests:
-                print ('Search received again from a loop')
-            else:
+
+            # if this query is currently not processing
+            if queryWithoutHops not in mySearchRequests and queryWithoutHops not in otherSearchRequests:
                 query = res[4]
                 hops = int(res[5])
                 hops = hops + 1
@@ -423,10 +421,9 @@ def prefixLengthToRequest(request):
 
 def searchFile(ip_self, port_self, query, hops, ownRequest):
     global noOfMsgsForwarded
+    # print ('Searching file :' + query)
 
-    print ('Searching file :' + query)
-    # Find in local files
-    file = get_matching_file_local(query)
+    file = get_matching_file_local(query) # Find in local files
     if file:
         result= ''
         for element in file:
@@ -437,7 +434,8 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
     if not myConnectedNodes:
         return (False, False, "0010 ERROR", "", 0, "0")
 
-    if hops > 20:
+    # flooding stops at 10 hops
+    if hops > 10:
         return (False, False, "0010 ERROR", "", 0, "0")
 
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
@@ -451,7 +449,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
         port_peer = peer[1]
 
         noOfMsgsForwarded = noOfMsgsForwarded + 1
-        print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
+        # print ('Searching on peer [' + ip_peer + ':' + str(port_peer)+']')
         server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server.connect((ip_peer, int(port_peer)))
         server.send((request).encode('utf-8'))
