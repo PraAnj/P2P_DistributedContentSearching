@@ -86,26 +86,28 @@ class PeerThread(threading.Thread):
         elif reqType == 'SER':
             noOfMsgsRecieved = noOfMsgsRecieved + 1
             print ('Search request received : ' + requestString)
-            # queryWithoutHops = requestString.rsplit(' ', 1)[0]
-            # if queryWithoutHops in mySearchRequests:
-            #     print ('Search received to the originator again')
-            # elif queryWithoutHops in otherSearchRequests:
-            #     print ('Search received again from a loop')
-            query = res[4]
-            hops = int(res[5])
-            hops = hops + 1
-            found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
-
-            noOfMsgsAnswered = noOfMsgsAnswered + 1
-
-            if found: # reply to the peer
-                if local:
-                    count = len(shlex.split(files))
-                    return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
-                else: #Peer
-                    return files
+            queryWithoutHops = requestString.rsplit(' ', 1)[0]
+            if queryWithoutHops in mySearchRequests:
+                print ('Search received to the originator again')
+            elif queryWithoutHops in otherSearchRequests:
+                print ('Search received again from a loop')
             else:
-                return '0010 ERROR'
+                query = res[4]
+                hops = int(res[5])
+                hops = hops + 1
+                found, local, files, rest_ip, rest_port, hops = searchFile(res[2], int(res[3]), query, hops, False)
+
+                noOfMsgsAnswered = noOfMsgsAnswered + 1
+
+                if found: # reply to the peer
+                    if local:
+                        count = len(shlex.split(files))
+                        return prefixLengthToRequest('SEROK '+ str(count) + ' ' + ip_self + ' ' + str(rest_port_self) +  ' ' + str(hops) + ' ' + files)
+                    else: #Peer
+                        return files
+                else:
+                    return '0010 ERROR'
+            return '0010 ERROR'
         # Request Type cannot be identified
         return "Unrecognised request type"
         
@@ -398,6 +400,20 @@ def get_matching_file_local(search_file):
     print("Matched Files List : ", matched_file_list)
     return matched_file_list
 
+def addToRequestCache(ownRequest, request):
+    uniqueQuery = request.rsplit(' ', 1)[0] #without hops
+    if ownRequest:
+        mySearchRequests.append(uniqueQuery)
+    else:
+        otherSearchRequests.append(uniqueQuery)
+
+def removeFromRequestCache(ownRequest, request):
+    uniqueQuery = request.rsplit(' ', 1)[0] #without hops
+    if ownRequest:
+        mySearchRequests.remove(uniqueQuery)
+    else:
+        otherSearchRequests.remove(uniqueQuery)
+
 # Prefix command length as 4 characters before sending UDP msg
 def prefixLengthToRequest(request):
     length = len(request) + 5
@@ -427,11 +443,8 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
     request = "SER " + ip_self + ' ' + str(port_self) + ' \"' +  query + '\" ' + str(hops)
     request = prefixLengthToRequest(request)
 
-    # Update global request cache, without hops
-    if ownRequest:
-        mySearchRequests.append(request.rsplit(' ', 1)[0])
-    else:
-        otherSearchRequests.append(request.rsplit(' ', 1)[0])
+    addToRequestCache(ownRequest, request) # add to global request cache
+
     # Send search request to peers, handles in PeerThread event loop
     for peer in myConnectedNodes:
         ip_peer = peer[0]
@@ -452,6 +465,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             print(serverResponse)
             rest_ip = serverResponse[3]
             rest_port = serverResponse[4]
+            removeFromRequestCache(ownRequest, request) #remove from cache
             if ownRequest:
                 fileCount = int(serverResponse[2])
                 result = ''
@@ -463,6 +477,7 @@ def searchFile(ip_self, port_self, query, hops, ownRequest):
             else:
                 return True, False, responseString,  rest_ip, int(rest_port), serverResponse[5] # same peer response forwarded
 
+    removeFromRequestCache(ownRequest, request) #remove from cache
     return (False, False, "0010 ERROR", "", 0, str(hops))
 
 def init_udp_server_thread(host='127.0.0.1', port=1234):
