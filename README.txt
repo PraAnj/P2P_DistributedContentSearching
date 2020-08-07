@@ -10,6 +10,11 @@ How to run java bootstrap server (We used java version)
 3. java BootstrapServer
 
 
+Installations required
+************************************
+1. Install flask and requests modules (pip install flask, pip install requests)
+
+
 How to join the network from python node
 ***************************************
 1. Go to src
@@ -17,8 +22,8 @@ How to join the network from python node
 
 Method 1
     "cd src "
-    "python pythonNode.py <ip_bs> <port_bs> <port_self> <name_self>"
-    ex: python pythonNode.py 192.168.1.2 55555 8081 node1
+    "python pythonNode.py <ip_bs> <port_bs> <usd_port_self> <name_self> <restapi_port>"
+    ex: python pythonNode.py 192.168.1.5 55555 8081 node1 81
 
 Method 2
     "cd src "
