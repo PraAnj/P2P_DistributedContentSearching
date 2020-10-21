@@ -72,7 +72,7 @@ class PeerThread(threading.Thread):
                 # No peers connected
                 print('No peers connected')
                 return '0013 LEAVEOK 0'
-            elif 0 < len(myConnectedNodes) < 5:
+            elif 0 < len(myConnectedNodes) < 10:
                 # Acceptable no of peers are connected
                 print("A Node Leaved")
                 myConnectedNodes.remove((res[2], res[3]))
